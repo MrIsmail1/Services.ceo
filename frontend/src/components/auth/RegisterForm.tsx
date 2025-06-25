@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RegisterInput, registerSchema } from "@/schemas/authSchema";
-import { RegisterFormProps } from "@/types/auth/Auth";
+import { RegisterFormProps } from "@/types/Auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft } from "lucide-react";
 import { useForm } from "react-hook-form";

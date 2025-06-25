@@ -11,10 +11,10 @@ export default function AuthLayout({
 }) {
   const { user } = useAuth();
   const router = useRouter();
-  if (user && user.role == "ClIENT") {
+  if (user && user.role == "CLIENT") {
     router.replace("/");
   } else if (user && user.role == "PRO") {
-    router.replace("/dahboard");
+    router.replace("/dashboard");
   }
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
