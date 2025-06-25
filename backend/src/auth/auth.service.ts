@@ -79,6 +79,13 @@ export class AuthService {
     );
     return {
       token,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+      },
     };
   }
   async login({ email, password }: LoginPayload) {
@@ -99,6 +106,13 @@ export class AuthService {
       this.tokenSigningOptions,
     );
     return {
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+      },
       token,
     };
   }
