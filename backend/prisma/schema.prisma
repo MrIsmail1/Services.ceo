@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -79,8 +78,10 @@ enum ConstraintSeverity {
 
 model User {
   id            String         @id @default(cuid())
+  firstName     String
+  lastName      String
   email         String         @unique
-  password      String
+  passwordHash      String
   role          String
   services      Service[]      @relation("UserServices")
   organizations Organization[] @relation("UserOrganizations")
