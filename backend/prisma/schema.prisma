@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums from feature/DEV-4-services-front
 enum ObjectStatus {
   ONLINE
   OFFLINE
@@ -70,19 +71,24 @@ enum ConstraintSeverity {
   HARD_BLOCK
 }
 
+// User of the system
 model User {
-  id            String         @id @default(cuid())
-  firstName     String
-  lastName      String
-  email         String         @unique
-  passwordHash  String
-  role          String
-  services      Service[]      @relation("UserServices")
-  organizations Organization[] @relation("UserOrganizations")
-  agents        Agent[]
+  id             String            @id @default(uuid())
+  email          String            @unique
+  passwordHash   String
+  firstName      String?
+  lastName       String?
+  role           String            @default("CLIENT")
+  services       Service[]         // services this user created
+  executions     Execution[]
+  versions       ServiceVersion[]  // versions published by this user
+  organizations  Organization[]    @relation("UserOrganizations")
+  agents         Agent[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
-
+// Organisations that users can create/join
 model Organization {
   organizationId     String                 @id @default(cuid())
   authorId           String
@@ -100,90 +106,99 @@ model Organization {
   createdAt          DateTime               @default(now())
 }
 
+// Main service table
 model Service {
-  serviceId            String             @id @default(cuid())
-  authorId             String
-  organizationId       String
-  title                String?            @db.VarChar(64)
-  summary              String?            @db.VarChar(254)
-  description          String?            @db.Text
-  mediaBannerId        String?
-  termsAndConditionsId String?
-  parentServiceId      String?
-  tags                 String?
-  locationId           String?
-  price                Int
-  legalVatPercent      Int
-  lowerPrice           Int?
-  upperPrice           Int?
-  negotiable           Boolean?
-  perimeter            Int?
-  supplyType           ServiceSupplyForm  @default(IRL)
-  uptakeForm           ServiceUptakeType  @default(INSTANT)
-  billingPlan          ServiceBillingPlan @default(DIRECT)
-  onlineService        Boolean?
-  advancedAttributes   Json?
-  slug                 String             @unique @db.VarChar(255)
-  state                ObjectStatus       @default(OFFLINE)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime?
-  deletedAt            DateTime?
+  id          String           @id @default(uuid())
+  name        String
+  slug        String           @unique
+  description String?
+  isActive    Boolean          @default(true)
+  category    String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  config      ServiceConfig    @relation(fields: [configId], references: [id])
+  configId    String           @unique
+  executions  Execution[]
+  versions    ServiceVersion[]
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  createdById String
 
-  organization     Organization @relation(fields: [organizationId], references: [organizationId])
-  author           User         @relation("UserServices", fields: [authorId], references: [id])
-  parentService    Service?     @relation("ParentService", fields: [parentServiceId], references: [serviceId])
-  childrenServices Service[]    @relation("ParentService")
-
-  ruleset Ruleset?
+  @@index([slug])
+  @@index([category])
+  @@index([createdById])
 }
 
-model Ruleset {
-  rulesetId       String        @id @default(cuid())
-  serviceId       String        @unique
-  service         Service       @relation(fields: [serviceId], references: [serviceId])
-  version         Int           @default(1)
-  status          RulesetStatus @default(DRAFT)
-  aiModel         String        @default("gpt-4")
-  contextSystem   String        @db.Text
-  instructionUser String        @db.Text
-  promptTemplate  String        @db.Text
-  language        String?       @default("fr")
-  temperature     Float?        @default(0.7)
-  topP            Float?        @default(0.95)
-  maxTokens       Int?          @default(1024)
-  fallbackEnabled Boolean?      @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime?
-
-  inputs      RulesetInput[]
-  constraints RulesetConstraint[]
+// Service configuration
+model ServiceConfig {
+  id              String   @id @default(uuid())
+  service         Service?
+  inputSchema     Json
+  outputSchema    Json
+  constraints     Json
+  requirements    Json
+  systemPrompt    String
+  userPrompt      String
+  uiConfig        Json?
+  validationRules Json?
+  fallbackConfig  Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-model RulesetInput {
-  inputId   String        @id @default(cuid())
-  rulesetId String
-  ruleset   Ruleset       @relation(fields: [rulesetId], references: [rulesetId])
-  key       String
-  label     String
-  type      InputTypeEnum
-  required  Boolean       @default(true)
-  regex     String?
-  options   Json?
-  help      String?
-  position  Int?
+// Published versions of a service
+model ServiceVersion {
+  id            String   @id @default(uuid())
+  service       Service  @relation(fields: [serviceId], references: [id])
+  serviceId     String
+  version       Int
+  config        Json
+  notes         String?
+  publishedAt   DateTime @default(now())
+  publishedBy   User     @relation(fields: [publishedById], references: [id])
+  publishedById String
+
+  @@unique([serviceId, version])
 }
 
-model RulesetConstraint {
-  constraintId String             @id @default(cuid())
-  rulesetId    String
-  ruleset      Ruleset            @relation(fields: [rulesetId], references: [rulesetId])
-  scope        ConstraintScope
-  key          String
-  operator     String
-  value        String
-  severity     ConstraintSeverity
+// Executions (runs) of services
+model Execution {
+  id          String    @id @default(uuid())
+  service     Service   @relation(fields: [serviceId], references: [id])
+  serviceId   String
+  status      String
+  input       Json
+  output      Json?
+  metadata    Json?
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+  logs        Log[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([serviceId])
+  @@index([userId])
+  @@index([status])
 }
 
+// Logs emitted during an execution
+model Log {
+  id          String    @id @default(uuid())
+  execution   Execution @relation(fields: [executionId], references: [id])
+  executionId String
+  level       String
+  message     String
+  timestamp   DateTime  @default(now())
+  metadata    Json?
+
+  @@index([executionId])
+  @@index([timestamp])
+}
+
+// Agents that users can configure
 model Agent {
   id          String   @id @default(uuid())
   name        String

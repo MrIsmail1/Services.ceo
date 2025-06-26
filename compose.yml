@@ -31,6 +31,7 @@ services:
       - nest_node_modules:/usr/src/app/node_modules
     environment:
       - NODE_ENV=${NODE_ENV:-development}
+      - LM_STUDIO_URL=http://host.docker.internal:1234/v1
     command: npm run start:dev
     depends_on:
       postgresql:
