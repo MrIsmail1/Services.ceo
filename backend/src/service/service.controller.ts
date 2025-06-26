@@ -6,9 +6,7 @@ import {
   Param, 
   Delete, 
   Put, 
-  Query, 
-  NotFoundException,
-  ParseUUIDPipe
+  Query,
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -17,10 +15,8 @@ import {
   ApiBody, 
   ApiParam, 
   ApiQuery,
-  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiNotFoundResponse,
   ApiBadRequestResponse
 } from '@nestjs/swagger';
 import { ServiceService } from './service.service';
@@ -137,7 +133,7 @@ export class ServiceController {
     }
   })
   async findAll(@Query('category') category?: string) {
-    return this.serviceService.findAll();
+    return this.serviceService.findAll(category);
   }
 
   @Get('organization/:organizationId')
@@ -154,7 +150,7 @@ export class ServiceController {
     description: 'Liste des services de l\'organisation récupérée avec succès'
   })
   getByOrganization(@Param('organizationId') organizationId: string) {
-    return this.serviceService.findAll();
+    return this.serviceService.findAll(undefined, organizationId);
   }
 
   @Get(':id')
@@ -189,8 +185,8 @@ export class ServiceController {
     status: 404,
     description: 'Service non trouvé'
   })
-  update(@Param('id') id: string, @Body() updateData: any) {
-    return this.serviceService.update(id, updateData);
+  update(@Param('id') id: string, @Body() updateServiceDto: UpdateServiceDto) {
+    return this.serviceService.update(id, updateServiceDto);
   }
 
   @Delete(':id')

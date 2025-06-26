@@ -5,9 +5,11 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigurationModule } from '../configuration/configuration.module';
 import {HttpModule} from "@nestjs/axios";
 import {AiService} from "../ai/ai.service";
+import { LoggingModule } from '../logging/logging.module';
+
 
 @Module({
-  imports: [PrismaModule, ConfigurationModule, HttpModule],
+  imports: [PrismaModule, ConfigurationModule, HttpModule, LoggingModule],
   providers: [ExecutionService, AiService],
   controllers: [ExecutionController],
 })

@@ -72,7 +72,13 @@ export class AiService {
         return { result: null, error: data.error || 'Empty response' };
       }
       const content = data.choices[0].message.content;
-      return { result: content as T };
+      try {
+        const parsed = JSON.parse(content);
+        return { result: parsed as T };
+      } catch (err) {
+        this.logger.error('Error parsing AI response', err);
+        return { result: null, error: 'Invalid JSON response' };
+      }
     } catch (err: any) {
       this.logger.error('Erreur AI.generate()', err.message || err);
       const msg =

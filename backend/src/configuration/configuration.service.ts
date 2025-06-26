@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import Ajv from 'ajv';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -6,10 +7,15 @@ import {
     ConfigurationResponse,
     UpdateConfigurationDto
 } from './types/configuration.type';
+import { ServiceVersionService } from '../service-version/service-version.service';
+
 
 @Injectable()
 export class ConfigurationService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private versioning: ServiceVersionService,
+    ) {}
 
     async createDefaultConfig(serviceId: string, createdById: string): Promise<ServiceConfiguration> {
         const defaultConfig = {
@@ -91,6 +97,8 @@ export class ConfigurationService {
             data: updatePayload
         });
 
+        await this.versioning.createSnapshot(serviceId);
+
         return {
             success: true,
             data: this.mapToServiceConfiguration(updated),
@@ -99,10 +107,23 @@ export class ConfigurationService {
     }
 
     async validateInput(serviceId: string, input: any): Promise<boolean> {
-        const config = await this.getByServiceId(serviceId);
-        if (!config.data) {
+        const { data } = await this.getByServiceId(serviceId);
+        if (!data) {
             return false;
-            }
+        }
+
+        const ajv = new Ajv({ allErrors: true, useDefaults: false });
+        const validate = ajv.compile(data.inputSchema as object);
+        const valid = validate(input);
+
+        if (!valid) {
+            const errors = validate.errors
+                ?.map(e => `${(e as any).instancePath ?? e.dataPath} ${e.message}`)
+                .join('; ');
+            throw new Error(errors || 'Invalid input');
+
+        }
+
         return true;
     }
 

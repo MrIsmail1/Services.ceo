@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
+import { Prisma } from '@prisma/client';
+import { ServiceVersionService } from '../service-version/service-version.service';
+
 
 @Injectable()
 export class ServiceService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private versioning: ServiceVersionService,
+    ) {}
 
     async create(createServiceDto: CreateServiceDto) {
         const { title, description, category, organizationId, authorId, price } = createServiceDto;
@@ -45,8 +51,25 @@ export class ServiceService {
         });
     }
 
-    async findAll() {
+    async findAll(category?: string, organizationId?: string) {
+        const where: Prisma.ServiceWhereInput = {};
+
+        if (category) {
+            where.category = category;
+        }
+
+        if (organizationId) {
+            where.config = {
+                is: {
+                    metadata: {
+                        path: ['organizationId'],
+                        equals: organizationId
+                    } as Prisma.JsonFilter
+                }
+            } as Prisma.ServiceConfigScalarRelationFilter;
+        }
         return this.prisma.service.findMany({
+            where,
             include: {
                 config: true,
                 createdBy: {
@@ -75,11 +98,15 @@ export class ServiceService {
     async update(id: string, updateData: any) {
         await this.findOne(id);
 
-        return this.prisma.service.update({
+        const updated = await this.prisma.service.update({
             where: { id },
             data: updateData,
             include: { config: true }
         });
+
+        await this.versioning.createSnapshot(id);
+
+        return updated;
     }
 
     async remove(id: string) {

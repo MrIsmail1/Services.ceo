@@ -6,12 +6,18 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService, AiResponse } from '../ai/ai.service';
 import { Prisma } from '@prisma/client';
+import { ConfigurationService } from '../configuration/configuration.service';
+import { LoggingService } from '../logging/logging.service';
+
+
 
 @Injectable()
 export class ExecutionService {
   constructor(
       private readonly prisma: PrismaService,
       private readonly ai: AiService,
+      private readonly configurationService: ConfigurationService,
+      private readonly logger: LoggingService,
   ) {}
 
 
@@ -42,12 +48,11 @@ export class ExecutionService {
       },
     });
 
-    const systemPrompt = svc.config.systemPrompt;
-    const userPrompt = `${svc.config.userPrompt}\n\n${JSON.stringify(
-        input,
-        null,
-        2,
-    )}`;
+    await this.logger.log(exec.id, 'INFO', 'Execution started');
+
+    const aiReq = await this.configurationService.buildAiRequest(serviceId, input);
+    const systemPrompt = aiReq.system;
+    const userPrompt = `${aiReq.user}\n\n${JSON.stringify(aiReq.input, null, 2)}`;
     const schema = svc.config.outputSchema as object;
 
     const aiResp: AiResponse<any> = await this.ai.generate(
@@ -58,10 +63,13 @@ export class ExecutionService {
     );
 
     let updateData: Prisma.ExecutionUpdateInput;
+    let output: { success: boolean; data: any } | undefined;
     if (aiResp.error == null) {
+      output = { success: true, data: aiResp.result! };
+
       updateData = {
         status: 'COMPLETED',
-        output: aiResp.result!,
+        output,
         completedAt: new Date(),
       };
     } else {
@@ -77,12 +85,18 @@ export class ExecutionService {
       data: updateData,
     });
 
+    await this.logger.log(
+        exec.id,
+        aiResp.error ? 'ERROR' : 'INFO',
+        aiResp.error ? String(aiResp.error) : 'Execution completed',
+    );
+
     if (aiResp.error) {
       throw new InternalServerErrorException(
           `AI error: ${aiResp.error}`,
       );
     }
 
-    return { success: true, data: aiResp.result };
+    return output!;
   }
 }
