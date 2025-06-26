@@ -13,10 +13,10 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
-  // Swagger
+  // Swagger Configuration
   const config = new DocumentBuilder()
-    .setTitle('Sceo API')
-    .setDescription('API description')
+    .setTitle('API Services IA')
+    .setDescription('API pour la gestion des services IA')
     .setVersion('1.0')
     .addTag('api')
     .build();
