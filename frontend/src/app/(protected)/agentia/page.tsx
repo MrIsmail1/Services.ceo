@@ -225,7 +225,7 @@ export default function AgentiaPage() {
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
-                Créer un agent IA
+                Ajouter un agent IA
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
@@ -466,7 +466,7 @@ export default function AgentiaPage() {
             <p className="text-gray-600 mb-4">Commencez par créer votre premier agent IA</p>
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Créer un agent IA
+              Ajouter un agent IA
             </Button>
           </div>
         )}
