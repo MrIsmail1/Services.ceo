@@ -56,7 +56,7 @@ export const signUp = async ({
     password,
     role,
   });
-
+};
 // ——— SERVICES ————————————————————————
 
 export const fetchServices = async (): Promise<Service[]> =>
