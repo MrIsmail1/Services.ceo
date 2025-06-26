@@ -8,6 +8,7 @@ import {
   RegisterResponse,
   User,
 } from "@/types/Auth";
+import { Service } from "@/types/Service";
 
 // ——— USER —————————————————————————————
 export const getUser = async (): Promise<User> =>
@@ -45,4 +46,20 @@ export const signUp = async ({
     email,
     password,
     role,
+  });
+
+// ——— SERVICES ————————————————————————
+
+export const fetchServices = async (): Promise<Service[]> =>
+  await nestAPI.get<Service[], Service[]>("/services");
+
+export const createService = async (serviceData: Service): Promise<Service> =>
+  await nestAPI.post<Service, Service>("/services", serviceData);
+
+export const updateServiceStatus = async (
+  serviceId: string,
+  status: Service["status"]
+): Promise<Service> =>
+  await nestAPI.patch<Service, Service>(`/services/${serviceId}/status`, {
+    status,
   });
