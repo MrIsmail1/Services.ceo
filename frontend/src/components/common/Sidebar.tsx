@@ -1,34 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { ChevronDown, Settings, Users, Shield, Server, Wrench, Info, Building, Bot, MessageSquare, CreditCard, HelpCircle } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Bot,
+  Building,
+  ChevronDown,
+  CreditCard,
+  HelpCircle,
+  Info,
+  MessageSquare,
+  Server,
+  Settings,
+  Shield,
+  Users,
+  Wrench,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 const sidebarItems = [
   { label: "Organisation", icon: Building, href: "#" },
   { label: "Accès", icon: Shield, href: "#" },
-  { label: "Services", icon: Server, href: "#" },
+  { label: "Services", icon: Server, href: "/services" },
   { label: "Agents IA", icon: Bot, href: "/agentia" },
   { label: "Équipes", icon: Users, href: "#" },
   { label: "Informations", icon: Info, href: "#" },
   { label: "Paramètres", icon: Settings, href: "#" },
-]
+];
 
 const bottomSidebarItems = [
   { label: "Comptabilité", icon: CreditCard },
   { label: "Transactions", icon: CreditCard },
   { label: "Clients", icon: Users },
   { label: "Fournisseurs", icon: Wrench },
-]
+];
 
 const supportItems = [
   { label: "Contacts", icon: MessageSquare },
   { label: "Tickets", icon: HelpCircle },
   { label: "Centre support", icon: HelpCircle },
   { label: "Conversations", icon: MessageSquare },
-]
+];
 
 export default function Sidebar() {
   return (
@@ -46,20 +59,19 @@ export default function Sidebar() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
             {sidebarItems.map((item, index) => {
-              const isAgentia = item.label === "Agents IA"
               const content = (
                 <div className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
                   <item.icon className="w-4 h-4" />
                   {item.label}
                 </div>
-              )
-              return isAgentia ? (
-                <Link href={item.href} key={index}>
-                  {content}
-                </Link>
-              ) : (
-                <button key={index} className="w-full text-left">{content}</button>
-              )
+              );
+              return (
+                item.href && (
+                  <Link href={item.href} key={index}>
+                    {content}
+                  </Link>
+                )
+              );
             })}
           </div>
 
@@ -117,5 +129,5 @@ export default function Sidebar() {
         </div>
       </div>
     </div>
-  )
+  );
 }
