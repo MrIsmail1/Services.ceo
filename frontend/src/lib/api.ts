@@ -9,7 +9,6 @@ import {
   User,
 } from "@/types/Auth";
 import { Service } from "@/types/Service";
-
 import {
   Agent,
   CreateAgentPayload,
@@ -23,9 +22,9 @@ export const getUser = async (): Promise<User> => {
 
 // ——— AUTHENTICATION ————————————————————————
 export const preAuth = async ({
-  email,
-  role,
-}: PreAuthPayload): Promise<PreAuth> => {
+                                email,
+                                role,
+                              }: PreAuthPayload): Promise<PreAuth> => {
   return await nestAPI.post<PreAuthPayload, PreAuth>("/auth/pre-auth", {
     email,
     role,
@@ -33,9 +32,9 @@ export const preAuth = async ({
 };
 
 export const signIn = async ({
-  email,
-  password,
-}: LoginPayload): Promise<LoginResponse> => {
+                               email,
+                               password,
+                             }: LoginPayload): Promise<LoginResponse> => {
   return await nestAPI.post<LoginPayload, LoginResponse>("/auth/login", {
     email,
     password,
@@ -43,35 +42,43 @@ export const signIn = async ({
 };
 
 export const signUp = async ({
-  firstName,
-  lastName,
-  email,
-  password,
-  role,
-}: RegisterPayload): Promise<RegisterResponse> => {
-  return await nestAPI.post<RegisterPayload, RegisterResponse>("/auth/register", {
-    firstName,
-    lastName,
-    email,
-    password,
-    role,
-  });
+                               firstName,
+                               lastName,
+                               email,
+                               password,
+                               role,
+                             }: RegisterPayload): Promise<RegisterResponse> => {
+  return await nestAPI.post<RegisterPayload, RegisterResponse>(
+      "/auth/register",
+      {
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+      }
+  );
+};
 
 // ——— SERVICES ————————————————————————
+export const fetchServices = async (): Promise<Service[]> => {
+  return await nestAPI.get<Service[], Service[]>("/services");
+};
 
-export const fetchServices = async (): Promise<Service[]> =>
-  await nestAPI.get<Service[], Service[]>("/services");
-
-export const createService = async (serviceData: Service): Promise<Service> =>
-  await nestAPI.post<Service, Service>("/services", serviceData);
+export const createService = async (
+    serviceData: Service
+): Promise<Service> => {
+  return await nestAPI.post<Service, Service>("/services", serviceData);
+};
 
 export const updateServiceStatus = async (
-  serviceId: string,
-  status: Service["status"]
-): Promise<Service> =>
-  await nestAPI.patch<Service, Service>(`/services/${serviceId}/status`, {
-    status,
-  });
+    serviceId: string,
+    status: Service["status"]
+): Promise<Service> => {
+  return await nestAPI.patch<Service, Service>(
+      `/services/${serviceId}/status`,
+      { status }
+  );
 };
 
 // ——— AGENTIA ———————————————————————————————
@@ -80,22 +87,25 @@ export const getAgents = async (): Promise<Agent[]> => {
 };
 
 export const createAgent = async (
-  payload: CreateAgentPayload
+    payload: CreateAgentPayload
 ): Promise<Agent> => {
-  return await nestAPI.post<CreateAgentPayload, Agent>("/agentia/create", payload);
+  return await nestAPI.post<CreateAgentPayload, Agent>(
+      "/agentia/create",
+      payload
+  );
 };
 
 export const testAgentConnection = async ({
-  apiKey,
-  apiUrl,
-  model,
-}: {
+                                            apiKey,
+                                            apiUrl,
+                                            model,
+                                          }: {
   apiKey?: string;
   apiUrl: string;
   model: string;
 }): Promise<AgentTestResponse> => {
   return await nestAPI.post<
-    { apiKey?: string; apiUrl: string; model: string },
-    AgentTestResponse
+      { apiKey?: string; apiUrl: string; model: string },
+      AgentTestResponse
   >("/agentia/test-connection", { apiKey, apiUrl, model });
 };

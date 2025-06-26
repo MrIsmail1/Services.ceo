@@ -73,19 +73,19 @@ enum ConstraintSeverity {
 
 // User of the system
 model User {
-  id             String            @id @default(uuid())
-  email          String            @unique
-  passwordHash   String
-  firstName      String?
-  lastName       String?
-  role           String            @default("CLIENT")
-  services       Service[]         // services this user created
-  executions     Execution[]
-  versions       ServiceVersion[]  // versions published by this user
-  organizations  Organization[]    @relation("UserOrganizations")
-  agents         Agent[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id            String           @id @default(uuid())
+  email         String           @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          String           @default("CLIENT")
+  services      Service[] // services this user created
+  executions    Execution[]
+  versions      ServiceVersion[] // versions published by this user
+  organizations Organization[]   @relation("UserOrganizations")
+  agents        Agent[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
 // Organisations that users can create/join
@@ -102,26 +102,35 @@ model Organization {
   description        String?                @db.Text
   summary            String?                @db.Text
   advancedAttributes Json?
-  services           Service[]
+  services           Service[]              @relation("OrganizationServices")
   createdAt          DateTime               @default(now())
 }
 
 // Main service table
 model Service {
-  id          String           @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  slug        String           @unique
+  slug        String   @unique
   description String?
-  isActive    Boolean          @default(true)
+  isActive    Boolean  @default(true)
   category    String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  config      ServiceConfig    @relation(fields: [configId], references: [id])
-  configId    String           @unique
-  executions  Execution[]
-  versions    ServiceVersion[]
-  createdBy   User             @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // relation vers la config
+  config   ServiceConfig @relation(fields: [configId], references: [id])
+  configId String        @unique
+
+  executions Execution[]
+  versions   ServiceVersion[]
+
+  // qui a créé le service
+  createdBy   User   @relation(fields: [createdById], references: [id])
   createdById String
+
+  // (optionnel) organisation liée
+  organizationId String?
+  organization   Organization? @relation("OrganizationServices", fields: [organizationId], references: [organizationId])
 
   @@index([slug])
   @@index([category])
@@ -131,7 +140,6 @@ model Service {
 // Service configuration
 model ServiceConfig {
   id              String   @id @default(uuid())
-  service         Service?
   inputSchema     Json
   outputSchema    Json
   constraints     Json
@@ -144,6 +152,9 @@ model ServiceConfig {
   metadata        Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // back-relation automatique vers Service.config
+  service Service?
 }
 
 // Published versions of a service
@@ -184,7 +195,7 @@ model Execution {
   @@index([status])
 }
 
-// Logs emitted during an execution
+// Logs émis durant une exécution
 model Log {
   id          String    @id @default(uuid())
   execution   Execution @relation(fields: [executionId], references: [id])
@@ -198,7 +209,7 @@ model Log {
   @@index([timestamp])
 }
 
-// Agents that users can configure
+// Agents que les users peuvent configurer
 model Agent {
   id          String   @id @default(uuid())
   name        String
