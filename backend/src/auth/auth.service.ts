@@ -21,7 +21,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
   private tokenSigningOptions: SignOptionsAndSecret = {
-    expiresIn: '15mn',
+    expiresIn: '4h',
     secret: process.env.JWT_SECRET!,
   };
   async preAuth({ email, role }: PreAuthPayload): Promise<{

@@ -9,28 +9,37 @@ import {
   User,
 } from "@/types/Auth";
 
+import {
+  Agent,
+  CreateAgentPayload,
+  AgentTestResponse,
+} from "@/types/Agentia";
+
 // ——— USER —————————————————————————————
-export const getUser = async (): Promise<User> =>
-  await nestAPI.get<User, User>("/user/profile");
+export const getUser = async (): Promise<User> => {
+  return await nestAPI.get<User, User>("/user/profile");
+};
 
 // ——— AUTHENTICATION ————————————————————————
 export const preAuth = async ({
   email,
   role,
-}: PreAuthPayload): Promise<PreAuth> =>
-  await nestAPI.post<PreAuthPayload, PreAuth>("/auth/pre-auth", {
+}: PreAuthPayload): Promise<PreAuth> => {
+  return await nestAPI.post<PreAuthPayload, PreAuth>("/auth/pre-auth", {
     email,
     role,
   });
+};
 
 export const signIn = async ({
   email,
   password,
-}: LoginPayload): Promise<LoginResponse> =>
-  await nestAPI.post<LoginPayload, LoginResponse>("/auth/login", {
+}: LoginPayload): Promise<LoginResponse> => {
+  return await nestAPI.post<LoginPayload, LoginResponse>("/auth/login", {
     email,
     password,
   });
+};
 
 export const signUp = async ({
   firstName,
@@ -38,11 +47,38 @@ export const signUp = async ({
   email,
   password,
   role,
-}: RegisterPayload): Promise<RegisterResponse> =>
-  await nestAPI.post<RegisterPayload, RegisterResponse>("/auth/register", {
+}: RegisterPayload): Promise<RegisterResponse> => {
+  return await nestAPI.post<RegisterPayload, RegisterResponse>("/auth/register", {
     firstName,
     lastName,
     email,
     password,
     role,
   });
+};
+
+// ——— AGENTIA ———————————————————————————————
+export const getAgents = async (): Promise<Agent[]> => {
+  return await nestAPI.get<unknown, Agent[]>("/agentia");
+};
+
+export const createAgent = async (
+  payload: CreateAgentPayload
+): Promise<Agent> => {
+  return await nestAPI.post<CreateAgentPayload, Agent>("/agentia/create", payload);
+};
+
+export const testAgentConnection = async ({
+  apiKey,
+  apiUrl,
+  model,
+}: {
+  apiKey?: string;
+  apiUrl: string;
+  model: string;
+}): Promise<AgentTestResponse> => {
+  return await nestAPI.post<
+    { apiKey?: string; apiUrl: string; model: string },
+    AgentTestResponse
+  >("/agentia/test-connection", { apiKey, apiUrl, model });
+};
