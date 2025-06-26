@@ -43,8 +43,8 @@ temp/
 # Optional eslint cache
 .eslintcache
 
-./backend/package-lock.json
-./frontend/package-lock.json
+/backend/package-lock.json
+/frontend/package-lock.json
 # MacOS files
 .AppleDouble
 .LSOverride
