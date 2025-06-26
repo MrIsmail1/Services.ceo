@@ -8,7 +8,6 @@ import { setNavigate } from "@/utils/navigation";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useRouter } from "next/navigation";
-import Sidebar from "../components/common/Sidebar";
 import "./globals.css";
 
 export default function RootLayout({

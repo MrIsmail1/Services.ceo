@@ -8,6 +8,7 @@ import { ExecutionModule } from './execution/execution.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ServiceModule } from './service/service.module';
 import { UserModule } from './user/user.module';
+import { AgentiaModule } from './agentia/agentia.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UserModule } from './user/user.module';
     ExecutionModule,
     AuthModule,
     UserModule,
+    AgentiaModule
   ],
   controllers: [AppController, ConfigurationController],
   providers: [AppService],

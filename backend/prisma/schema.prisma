@@ -1,4 +1,3 @@
-// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +7,106 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Table principale des services
+// Enums from feature/DEV-4-services-front
+enum ObjectStatus {
+  ONLINE
+  OFFLINE
+  DELETED
+}
+
+enum ServiceBillingPlan {
+  UNIT
+  USAGE
+  DIRECT
+  MINUTE
+  MENSUAL
+  ANNUAL
+}
+
+enum ServicesAcceptedDevise {
+  UNKNW
+  CREDIT
+  EUR
+  USD
+  GBP
+}
+
+enum ServiceSupplyForm {
+  IRL
+  ONLINE
+  MIXED
+}
+
+enum ServiceUptakeType {
+  INSTANT
+  PERIODIC
+  PRESTATION
+}
+
+enum RulesetStatus {
+  DRAFT
+  VALIDATED
+  DISABLED
+}
+
+enum InputTypeEnum {
+  TEXT
+  TEXTAREA
+  FILE
+  SELECT
+  MULTISELECT
+  BOOLEAN
+  NUMBER
+  DATE
+}
+
+enum ConstraintScope {
+  INPUT
+  OUTPUT
+  RUNTIME
+}
+
+enum ConstraintSeverity {
+  SOFT_WARNING
+  HARD_BLOCK
+}
+
+// User of the system
+model User {
+  id             String            @id @default(uuid())
+  email          String            @unique
+  passwordHash   String
+  firstName      String?
+  lastName       String?
+  role           String            @default("CLIENT")
+  services       Service[]         // services this user created
+  executions     Execution[]
+  versions       ServiceVersion[]  // versions published by this user
+  organizations  Organization[]    @relation("UserOrganizations")
+  agents         Agent[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+// Organisations that users can create/join
+model Organization {
+  organizationId     String                 @id @default(cuid())
+  authorId           String
+  author             User                   @relation("UserOrganizations", fields: [authorId], references: [id])
+  ownerId            String?
+  legalName          String?                @db.VarChar(64)
+  brand              String?                @db.VarChar(32)
+  currency           ServicesAcceptedDevise @default(EUR)
+  vatNumber          String?                @db.VarChar(32)
+  locationId         String?
+  description        String?                @db.Text
+  summary            String?                @db.Text
+  advancedAttributes Json?
+  services           Service[]
+  createdAt          DateTime               @default(now())
+}
+
+// Main service table
 model Service {
   id          String           @id @default(uuid())
   name        String
@@ -30,7 +128,7 @@ model Service {
   @@index([createdById])
 }
 
-// Configuration du service
+// Service configuration
 model ServiceConfig {
   id              String   @id @default(uuid())
   service         Service?
@@ -48,7 +146,7 @@ model ServiceConfig {
   updatedAt       DateTime @updatedAt
 }
 
-// Versions des services
+// Published versions of a service
 model ServiceVersion {
   id            String   @id @default(uuid())
   service       Service  @relation(fields: [serviceId], references: [id])
@@ -63,7 +161,7 @@ model ServiceVersion {
   @@unique([serviceId, version])
 }
 
-// Exécutions de service
+// Executions (runs) of services
 model Execution {
   id          String    @id @default(uuid())
   service     Service   @relation(fields: [serviceId], references: [id])
@@ -86,22 +184,7 @@ model Execution {
   @@index([status])
 }
 
-// Utilisateurs
-model User {
-  id             String           @id @default(uuid())
-  email          String           @unique
-  lastName       String?
-  firstName      String?
-  passwordHash    String
-  role           String         @default("CLIENT")
-  services       Service[]
-  executions     Execution[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  ServiceVersion ServiceVersion[]
-}
-
-// Logs d'exécution
+// Logs emitted during an execution
 model Log {
   id          String    @id @default(uuid())
   execution   Execution @relation(fields: [executionId], references: [id])
@@ -115,3 +198,18 @@ model Log {
   @@index([timestamp])
 }
 
+// Agents that users can configure
+model Agent {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  type        String
+  model       String
+  apiKey      String?
+  apiUrl      String
+  status      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
