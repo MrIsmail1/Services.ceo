@@ -4,7 +4,8 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AiService } from '../ai/ai.service';
+import { AiService, AiResponse } from '../ai/ai.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ExecutionService {
@@ -13,13 +14,24 @@ export class ExecutionService {
       private readonly ai: AiService,
   ) {}
 
-  async run(serviceId: string, input: any): Promise<{ success: boolean; data: any }> {
+
+  async run(
+      serviceId: string,
+      input: any,
+  ): Promise<{ success: boolean; data: any }> {
+    // 1) Charger le service + sa config
     const svc = await this.prisma.service.findUnique({
       where: { id: serviceId },
       include: { config: true },
     });
-    if (!svc) throw new NotFoundException(`Service ${serviceId} introuvable`);
-    if (!svc.config) throw new NotFoundException(`Configuration manquante pour ${serviceId}`);
+    if (!svc) {
+      throw new NotFoundException(`Service ${serviceId} introuvable`);
+    }
+    if (!svc.config) {
+      throw new NotFoundException(
+          `Configuration manquante pour ${serviceId}`,
+      );
+    }
 
     const exec = await this.prisma.execution.create({
       data: {
@@ -30,26 +42,47 @@ export class ExecutionService {
       },
     });
 
-    const prompt = this.buildPrompt(svc.config, input);
-    const aiResp = await this.ai.generate(prompt, {});
+    const systemPrompt = svc.config.systemPrompt;
+    const userPrompt = `${svc.config.userPrompt}\n\n${JSON.stringify(
+        input,
+        null,
+        2,
+    )}`;
+    const schema = svc.config.outputSchema as object;
 
-    const updateData =
-        aiResp.error == null
-            ? { status: 'COMPLETED', output: aiResp.result, completedAt: new Date() }
-            : { status: 'FAILED', error: aiResp.error, completedAt: new Date() };
+    const aiResp: AiResponse<any> = await this.ai.generate(
+        systemPrompt,
+        userPrompt,
+        schema,
+        { stream: false },
+    );
 
-    await this.prisma.execution.update({ where: { id: exec.id }, data: updateData });
+    let updateData: Prisma.ExecutionUpdateInput;
+    if (aiResp.error == null) {
+      updateData = {
+        status: 'COMPLETED',
+        output: aiResp.result!,
+        completedAt: new Date(),
+      };
+    } else {
+      updateData = {
+        status: 'FAILED',
+        error: aiResp.error,
+        completedAt: new Date(),
+      };
+    }
+
+    await this.prisma.execution.update({
+      where: { id: exec.id },
+      data: updateData,
+    });
 
     if (aiResp.error) {
-      throw new InternalServerErrorException(`AI error: ${aiResp.error}`);
+      throw new InternalServerErrorException(
+          `AI error: ${aiResp.error}`,
+      );
     }
-    return { success: true, data: aiResp.result };
-  }
 
-  private buildPrompt(
-      config: { systemPrompt: string; userPrompt: string },
-      input: any,
-  ): string {
-    return [config.systemPrompt, config.userPrompt, JSON.stringify(input, null, 2)].join('\n\n');
+    return { success: true, data: aiResp.result };
   }
 }
