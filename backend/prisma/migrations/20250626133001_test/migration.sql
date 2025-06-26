@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Agent" ALTER COLUMN "apiKey" DROP NOT NULL;

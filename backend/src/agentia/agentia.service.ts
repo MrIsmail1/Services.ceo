@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios';
 
@@ -12,8 +16,16 @@ export class AgentiaService {
     type: string;
     model: string;
     apiKey: string;
+    apiUrl: string;
+    userId: string;
   }) {
-    // Ici on suppose que tu as un modèle `Agent` dans ta base de données (à ajouter si besoin)
+    if (!data.userId) {
+      throw new Error('userId manquant lors de la création de l’agent');
+    }
+
+    const parsedUrl = new URL(data.apiUrl);
+    const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+
     return this.prisma.agent.create({
       data: {
         name: data.name,
@@ -21,33 +33,94 @@ export class AgentiaService {
         type: data.type,
         model: data.model,
         apiKey: data.apiKey,
+        apiUrl: baseUrl,
+        userId: data.userId,
         status: 'ONLINE',
       },
     });
   }
 
-  async testConnection(apiKey: string): Promise<{ success: boolean }> {
-    try {
-      const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: 'ping' }],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        },
-      );
+  async getAllAgents(userId: string) {
+    return this.prisma.agent.findMany({ where: { userId } });
+  }
 
-      if (response.status === 200) {
-        return { success: true };
+  async getAgentById(id: string, userId: string) {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) throw new NotFoundException('Agent introuvable');
+    if (agent.userId !== userId) throw new ForbiddenException();
+    return agent;
+  }
+
+  async updateAgent(
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      model: string;
+      type: string;
+    }>,
+    userId: string,
+  ) {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) throw new NotFoundException('Agent introuvable');
+    if (agent.userId !== userId) throw new ForbiddenException();
+
+    return this.prisma.agent.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async deleteAgent(id: string, userId: string) {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) throw new NotFoundException('Agent introuvable');
+    if (agent.userId !== userId) throw new ForbiddenException();
+
+    return this.prisma.agent.delete({ where: { id } });
+  }
+
+  async testConnection(data: {
+    apiKey?: string;
+    apiUrl: string;
+  }): Promise<{ success: boolean; message?: string }> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (data.apiKey) {
+        headers['Authorization'] = `Bearer ${data.apiKey}`;
       }
 
-      return { success: false };
-    } catch (err) {
-      return { success: false };
+      const response = await axios.get(data.apiUrl, { headers });
+
+      const hasModels =
+        response.status === 200 &&
+        response.data &&
+        Array.isArray(response.data.data || response.data) &&
+        (response.data.data || response.data).length > 0;
+
+      return {
+        success: hasModels,
+        message: hasModels
+          ? 'Connexion réussie - modèles disponibles'
+          : 'Réponse valide mais aucun modèle trouvé',
+      };
+    } catch (error: any) {
+      console.error('❌ Erreur lors du test de connexion →', error);
+
+      let msg = 'Erreur inconnue';
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          msg = `Erreur API (${error.response.status}) : ${JSON.stringify(error.response.data)}`;
+        } else if (error.request) {
+          msg = 'Aucune réponse du serveur IA';
+        } else {
+          msg = `Erreur de configuration : ${error.message}`;
+        }
+      }
+
+      return { success: false, message: msg };
     }
   }
 }

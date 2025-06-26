@@ -4,6 +4,7 @@ import { UserModule } from 'src/user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
+import { Reflector } from '@nestjs/core';
 
 @Module({
   controllers: [AuthController],
@@ -11,9 +12,10 @@ import { AuthService } from './auth.service';
     UserModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '15m' },
+      signOptions: { expiresIn: '4h' },
     }),
   ],
-  providers: [AuthService, AuthGuard],
+  providers: [AuthService, AuthGuard, Reflector],
+  exports: [AuthGuard, JwtModule],
 })
 export class AuthModule {}

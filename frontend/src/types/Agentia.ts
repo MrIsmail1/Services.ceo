@@ -22,4 +22,5 @@ export interface CreateAgentPayload {
 
 export interface AgentTestResponse {
   success: boolean;
+  message?: string;
 }

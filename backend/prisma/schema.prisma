@@ -75,11 +75,13 @@ model User {
   firstName     String
   lastName      String
   email         String         @unique
-  passwordHash      String
+  passwordHash  String
   role          String
   services      Service[]      @relation("UserServices")
   organizations Organization[] @relation("UserOrganizations")
+  agents        Agent[]
 }
+
 
 model Organization {
   organizationId     String                 @id @default(cuid())
@@ -188,7 +190,11 @@ model Agent {
   description String?
   type        String
   model       String
-  apiKey      String
-  status      String   @default("ONLINE")
+  apiKey      String?
+  apiUrl      String
+  status      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
