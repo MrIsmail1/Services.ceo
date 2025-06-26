@@ -92,8 +92,8 @@ model User {
   email          String           @unique
   lastName       String?
   firstName      String?
-  passwordHash String
-  role           UserRole         @default(USER)
+  passwordHash    String
+  role           String         @default("CLIENT")
   services       Service[]
   executions     Execution[]
   createdAt      DateTime         @default(now())
@@ -115,8 +115,3 @@ model Log {
   @@index([timestamp])
 }
 
-enum UserRole {
-  USER
-  ADMIN
-  SUPER_ADMIN
-}

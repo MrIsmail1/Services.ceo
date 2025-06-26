@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, timeout, map, catchError } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { catchError, firstValueFrom, map, timeout } from 'rxjs';
 
 export interface AiResponse<T = any> {
   result: T | null;
@@ -15,28 +15,28 @@ export class AiService {
   private readonly requestTimeout: number;
 
   constructor(private readonly http: HttpService) {
-    this.baseUrl = process.env.LAMA_API_URL || 'http://127.0.0.1:1234';
+    this.baseUrl = 'http://host.docker.internal:1234';
     this.modelName =
-        process.env.LAMA_API_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
-    this.requestTimeout = Number(process.env.LAMA_API_TIMEOUT_MS) || 15_000;
+      process.env.LAMA_API_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
+    this.requestTimeout = 150000;
   }
 
   async generate<T = any>(
-      systemPrompt: string,
-      userPrompt: string,
-      jsonSchema: object,
-      options: {
-        temperature?: number;
-        max_tokens?: number;
-        stream?: boolean;
-      } = {},
+    systemPrompt: string,
+    userPrompt: string,
+    jsonSchema: object,
+    options: {
+      temperature?: number;
+      max_tokens?: number;
+      stream?: boolean;
+    } = {},
   ): Promise<AiResponse<T>> {
     const url = `${this.baseUrl}/v1/chat/completions`;
     const payload: any = {
       model: this.modelName,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt },
+        { role: 'user', content: userPrompt },
       ],
       response_format: {
         type: 'json_schema',
@@ -55,15 +55,17 @@ export class AiService {
 
     try {
       const resp$ = this.http
-          .post(url, payload, {
-            headers: { 'Content-Type': 'application/json' },
-            validateStatus: (s) => s >= 200 && s < 300,
-          })
-          .pipe(
-              timeout(this.requestTimeout),
-              map((r) => r.data),
-              catchError((err) => { throw err; }),
-          );
+        .post(url, payload, {
+          headers: { 'Content-Type': 'application/json' },
+          validateStatus: (s) => s >= 200 && s < 300,
+        })
+        .pipe(
+          timeout(this.requestTimeout),
+          map((r) => r.data),
+          catchError((err) => {
+            throw err;
+          }),
+        );
 
       const data: any = await firstValueFrom(resp$);
       if (data.error || !data.choices?.[0]?.message?.content) {
@@ -74,9 +76,9 @@ export class AiService {
     } catch (err: any) {
       this.logger.error('Erreur AI.generate()', err.message || err);
       const msg =
-          err.code === 'ECONNABORTED'
-              ? 'Request timeout'
-              : err.response?.data || err.message;
+        err.code === 'ECONNABORTED'
+          ? 'Request timeout'
+          : err.response?.data || err.message;
       return { result: null, error: String(msg) };
     }
   }
