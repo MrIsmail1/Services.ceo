@@ -20,7 +20,8 @@ export class WorkflowService {
     serviceName: string,
     input: any,
     systemPrompt: string,
-    userPrompt: string
+    userPrompt: string,
+    provider?: 'lama' | 'mistral'
   ): Promise<WorkflowResponse> {
     const workflowId = `workflow_${Date.now()}`;
     
@@ -150,7 +151,7 @@ export class WorkflowService {
           systemPrompt,
           planningPrompt,
           schema,
-          { stream: false }
+          { stream: false, provider }
         );
 
         if (response.error) {
@@ -181,7 +182,7 @@ export class WorkflowService {
           systemPrompt,
           processingPrompt,
           schema,
-          { stream: false }
+          { stream: false, provider }
         );
 
         if (response.error) {

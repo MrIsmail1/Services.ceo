@@ -18,4 +18,12 @@ export class ExecuteServiceRequestDto {
   @IsString()
   @IsOptional()
   executionId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Provider IA à utiliser (lama ou mistral)',
+    example: 'mistral',
+  })
+  @IsString()
+  @IsOptional()
+  provider?: 'lama' | 'mistral';
 }

@@ -114,6 +114,7 @@ export default function ProtectedServicesPage() {
       outputs: serviceData.outputs,
       uiConfig: serviceData.uiConfig,
       validationRules: serviceData.validationRules,
+      isPublic: serviceData.isPublic,
     };
     newService(payload);
   };
