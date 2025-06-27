@@ -14,17 +14,12 @@ export class AiService {
   private readonly baseUrl: string;
   private readonly modelName: string;
   private readonly requestTimeout: number;
-  private readonly openai: OpenAI;
 
   constructor(private readonly http: HttpService) {
     this.baseUrl = 'http://host.docker.internal:1234';
     this.modelName =
       process.env.LAMA_API_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
     this.requestTimeout = 150000;
-    /*const openaiApiKey = process.env.OPENAI_API_KEY || "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";
-    this.openai = new OpenAI({
-      apiKey: openaiApiKey,
-    });*/
   }
 
   
@@ -41,8 +36,13 @@ export class AiService {
     } = {},
   ): Promise<AiResponse<T>> {
     if (options.provider === 'openai') {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return { result: null, error: 'OPENAI_API_KEY manquante dans les variables d\'environnement' };
+      }
+      const openai = new OpenAI({ apiKey });
       try {
-        const completion = await this.openai.chat.completions.create({
+        const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
             { role: 'system', content: systemPrompt },
@@ -55,7 +55,6 @@ export class AiService {
         if (!content) {
           return { result: null, error: 'Empty response from OpenAI' };
         }
-        // Nettoyage des balises Markdown éventuelles (```json, ```) et échappements
         let cleanContent = content.replace(/```json|```/gi, '').trim();
         let parsed: any = null;
         try {
