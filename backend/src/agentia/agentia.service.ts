@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios';
+import { Mistral } from '@mistralai/mistralai';
 
 @Injectable()
 export class AgentiaService {
@@ -82,8 +83,34 @@ export class AgentiaService {
   async testConnection(data: {
     apiKey?: string;
     apiUrl: string;
+    type?: string;
+    model?: string;
   }): Promise<{ success: boolean; message?: string }> {
     try {
+      // Gestion spécifique pour Mistral
+      if (data.type && data.type.toLowerCase() === 'mistral') {
+        if (!data.apiKey) {
+          return { success: false, message: 'Clé API requise pour Mistral' };
+        }
+        try {
+          const mistral = new Mistral({
+            apiKey: data.apiKey,
+            serverURL: data.apiUrl,
+          });
+          // On tente de lister les modèles pour vérifier la connexion
+          const models = await mistral.models.list();
+          const hasModels = Array.isArray(models.data) && models.data.length > 0;
+          return {
+            success: hasModels,
+            message: hasModels
+              ? 'Connexion Mistral réussie - modèles disponibles'
+              : 'Connexion Mistral valide mais aucun modèle trouvé',
+          };
+        } catch (err: any) {
+          return { success: false, message: `Erreur Mistral: ${err.message}` };
+        }
+      }
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };

@@ -9,6 +9,7 @@ import {
   CreditCard,
   HelpCircle,
   Info,
+  LogOut,
   MessageSquare,
   Server,
   Settings,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import useAuth from "@/hooks/useAuth";
 
 const sidebarItems = [
   { label: "Organisation", icon: Building, href: "#" },
@@ -44,6 +46,12 @@ const supportItems = [
 ];
 
 export default function Sidebar() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -73,6 +81,14 @@ export default function Sidebar() {
                 )
               );
             })}
+            {user && user.role !== "PRO" && (
+              <Link href="/explore">
+                <div className="w-full flex items-center gap-3 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 rounded-md transition-colors font-semibold">
+                  <Server className="w-4 h-4" />
+                  Catalogue
+                </div>
+              </Link>
+            )}
           </div>
 
           <Separator className="my-4" />
@@ -115,7 +131,7 @@ export default function Sidebar() {
             <span className="text-sm text-gray-700">Changelog</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-3">
             <Avatar className="w-8 h-8">
               <AvatarImage src="/placeholder.svg?height=32&width=32" />
               <AvatarFallback>JL</AvatarFallback>
@@ -126,6 +142,15 @@ export default function Sidebar() {
             </div>
             <ChevronDown className="w-4 h-4 text-gray-500" />
           </div>
+
+          {/* Bouton de déconnexion */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors border border-red-200 hover:border-red-300"
+          >
+            <LogOut className="w-4 h-4" />
+            Se déconnecter
+          </button>
         </div>
       </div>
     </div>

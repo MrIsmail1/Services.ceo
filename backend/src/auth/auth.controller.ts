@@ -110,4 +110,20 @@ export class AuthController {
         });
         return { user };
     }
+
+    @ApiOperation({ summary: 'Log out and clear accessToken cookie' })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Successfully logged out',
+    })
+    @HttpCode(HttpStatus.OK)
+    @Post('logout')
+    async logout(@Res({ passthrough: true }) res: Response) {
+        res.clearCookie('accessToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== 'development',
+            sameSite: 'strict',
+        });
+        return { message: 'Successfully logged out' };
+    }
 }

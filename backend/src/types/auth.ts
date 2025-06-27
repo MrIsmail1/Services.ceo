@@ -18,7 +18,7 @@ export interface LoginPayload {
   password: string;
 }
 export interface JwtPayload {
-  id: string;
+  userId: string;
   email: string;
   iat?: number;
   exp?: number;
