@@ -21,10 +21,10 @@ export class AiService {
     this.modelName =
       process.env.LAMA_API_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
     this.requestTimeout = 150000;
-    const openaiApiKey = process.env.OPENAI_API_KEY || "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";
+    /*const openaiApiKey = process.env.OPENAI_API_KEY || "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";
     this.openai = new OpenAI({
       apiKey: openaiApiKey,
-    });
+    });*/
   }
 
   
