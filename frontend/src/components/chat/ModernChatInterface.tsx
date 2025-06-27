@@ -4,8 +4,9 @@ import { Send, Bot, User, ArrowLeft, Sparkles, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { WorkflowDisplay } from "./WorkflowDisplay";
+import { ModernWorkflowTimeline } from "./ModernWorkflowTimeline";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { TypewriterMessage } from "./TypewriterMessage";
 
 interface Message {
   id: string;
@@ -25,6 +26,22 @@ interface ModernChatInterfaceProps {
   onBack: () => void;
 }
 
+function useTypewriter(text: string, speed = 18) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    setDisplayed("");
+    if (!text) return;
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayed((prev) => prev + text[i]);
+      i++;
+      if (i >= text.length) clearInterval(interval);
+    }, speed);
+    return () => clearInterval(interval);
+  }, [text, speed]);
+  return displayed;
+}
+
 export function ModernChatInterface({ 
   serviceId, 
   serviceName, 
@@ -38,6 +55,7 @@ export function ModernChatInterface({
   const [currentWorkflow, setCurrentWorkflow] = useState<any>(null);
   const [suggestedInputs, setSuggestedInputs] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [provider, setProvider] = useState<'lama' | 'mistral'>('lama');
 
   // Auto-scroll vers le bas
   const scrollToBottom = () => {
@@ -80,7 +98,7 @@ export function ModernChatInterface({
       const res = await fetch(`http://localhost:4500/services/${serviceId}/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: { text: inputValue } }),
+        body: JSON.stringify({ input: { text: inputValue }, provider }),
       });
 
       const data = await res.json();
@@ -164,90 +182,53 @@ export function ModernChatInterface({
         </div>
       </div>
 
+      {/* Sélecteur de provider IA */}
+      <div className="p-3 border-b flex items-center gap-3 bg-gray-50">
+        <span className="text-sm text-gray-700">Fournisseur IA :</span>
+        <select
+          value={provider}
+          onChange={e => setProvider(e.target.value as 'lama' | 'mistral')}
+          className="border rounded px-2 py-1 text-sm"
+        >
+          <option value="lama">Lama Studio</option>
+          <option value="mistral">Mistral AI</option>
+        </select>
+      </div>
+
       {/* Zone de messages avec hauteur limitée */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div key={message.id}>
-            <div
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
-                <Card className={`${
-                  message.type === 'user' 
-                    ? 'bg-blue-600 text-white border-blue-600' 
-                    : 'bg-white border-gray-200'
-                }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      {message.type === 'assistant' && (
-                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Bot className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                          message.type === 'user' ? 'text-white' : 'text-gray-800'
-                        }`}>
-                          {message.type === 'assistant' ? (
-                            <MarkdownMessage content={message.content} />
-                          ) : (
-                            message.content
-                          )}
-                        </p>
-                        <p className={`text-xs mt-2 ${
-                          message.type === 'user' ? 'text-blue-100' : 'text-gray-400'
-                        }`}>
-                          {message.timestamp.toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
-                      </div>
-                      {message.type === 'user' && (
-                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                          <User className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+        {messages.map((message, idx) => (
+          <div key={message.id} className={`flex flex-col w-full mb-2 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex flex-col max-w-[80%] transition-all duration-300 ${message.type === 'user' ? 'flex-row-reverse' : ''}`}>
+              {/* Avatar */}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow ${message.type === 'user' ? 'bg-blue-600 ml-2' : 'bg-gradient-to-r from-blue-500 to-purple-600 mr-2'}`}>
+                {message.type === 'user' ? (
+                  <User className="w-5 h-5 text-white" />
+                ) : (
+                  <Bot className="w-5 h-5 text-white" />
+                )}
+              </div>
+              {/* Bulle de chat */}
+              <div className={`rounded-2xl px-4 py-3 shadow-md transition-all duration-300 ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'} ${message.type === 'user' ? 'rounded-br-none' : 'rounded-bl-none'}`}
+                style={{ minWidth: 80 }}>
+                {/* Effet machine à écrire pour l'IA */}
+                {message.type === 'assistant' ? (
+                  <MarkdownMessage content={<TypewriterMessage content={message.content} />} isRawElement />
+                ) : (
+                  <span className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</span>
+                )}
+                <div className="text-xs mt-2 text-gray-400 text-right">
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             </div>
-            
             {/* Afficher le workflow pour les messages de l'assistant */}
             {message.type === 'assistant' && message.workflow && (
-              <div className="mt-4">
-                <WorkflowDisplay 
+              <div className="mt-4 w-full">
+                <ModernWorkflowTimeline 
                   workflow={message.workflow} 
                   isVisible={true} 
                 />
-              </div>
-            )}
-
-            {/* Afficher les suggestions d'input si le message demande plus d'informations */}
-            {message.type === 'assistant' && message.requiresMoreInput && message.questions && (
-              <div className="mt-4">
-                <Card className="border-2 border-orange-200 bg-orange-50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Lightbulb className="w-5 h-5 text-orange-600" />
-                      <h4 className="font-medium text-orange-800">Suggestions de réponses :</h4>
-                    </div>
-                    <div className="space-y-2">
-                      {message.questions.map((question, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSuggestedInput(question)}
-                          className="w-full justify-start text-left text-sm border-orange-300 text-orange-700 hover:bg-orange-100"
-                        >
-                          💡 {question}
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
           </div>
@@ -255,8 +236,8 @@ export function ModernChatInterface({
 
         {/* Afficher le workflow en cours si pas encore dans les messages */}
         {submitting && currentWorkflow && (
-          <div className="mt-4">
-            <WorkflowDisplay 
+          <div className="mt-4 w-full">
+            <ModernWorkflowTimeline 
               workflow={currentWorkflow} 
               isVisible={true} 
             />

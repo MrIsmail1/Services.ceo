@@ -47,4 +47,5 @@ export interface CreateServicePayload {
   outputs?: ServiceOutput[];
   uiConfig?: Record<string, any>;
   validationRules?: Record<string, any>;
+  isPublic?: boolean;
 }

@@ -59,6 +59,7 @@ export class ExecutionController {
       @Param('serviceId', ParseUUIDPipe) serviceId: string,
       @Body() dto: ExecuteServiceRequestDto,
   ): Promise<ExecutionResponseDto> {
-    return this.executionService.run(serviceId, dto.input);
+    console.log('Provider IA reçu:', dto.provider);
+    return this.executionService.run(serviceId, dto.input, dto.provider);
   }
 }

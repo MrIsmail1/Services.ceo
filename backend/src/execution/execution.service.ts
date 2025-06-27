@@ -23,6 +23,7 @@ export class ExecutionService {
   async run(
       serviceId: string,
       input: any,
+      provider?: 'lama' | 'mistral',
   ): Promise<{ success: boolean; data: any; workflow?: any }> {
     // 1) Charger le service + sa config
     const svc = await this.prisma.service.findUnique({
@@ -70,6 +71,8 @@ Si les informations fournies ne sont pas suffisantes pour répondre de manière 
 
 Données à traiter : {input}`;
 
+    this.logger.log(exec.id, 'INFO', 'Provider IA utilisé : ' + (provider || 'lama'));
+
     try {
       // Exécuter le workflow
       const workflowResponse = await this.workflowService.executeWorkflow(
@@ -77,7 +80,8 @@ Données à traiter : {input}`;
         svc.name,
         input,
         systemPrompt,
-        userPrompt
+        userPrompt,
+        provider
       );
 
       let updateData: Prisma.ExecutionUpdateInput;

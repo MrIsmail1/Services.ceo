@@ -97,7 +97,7 @@ export default function ServiceChatPage() {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-[90vh] overflow-y-auto">
       <ModernChatInterface
         serviceId={serviceData.id}
         serviceName={serviceData.name}
