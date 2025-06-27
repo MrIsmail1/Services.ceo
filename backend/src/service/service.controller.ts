@@ -1,19 +1,19 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
-  Delete, 
-  Put, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Put,
   Query,
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
   ApiQuery,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -29,17 +29,17 @@ export class ServiceController {
   constructor(private readonly serviceService: ServiceService) {}
 
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Créer un nouveau service',
     description: 'Crée un nouveau service avec une configuration par défaut'
   })
-  @ApiBody({ 
+  @ApiBody({
     type: CreateServiceDto,
     examples: {
       basic: {
         summary: 'Création basique',
         value: {
-          title: 'Service de traduction',
+          name: 'Service de traduction',
           description: 'Traduction professionnelle',
           organizationId: '123e4567-e89b-12d3-a456-426614174000',
           authorId: '123e4567-e89b-12d3-a456-426614174001',
@@ -49,7 +49,7 @@ export class ServiceController {
       full: {
         summary: 'Création complète',
         value: {
-          title: 'Service de traduction premium',
+          name: 'Service de traduction premium',
           description: 'Traduction professionnelle avec relecture',
           category: 'traduction',
           organizationId: '123e4567-e89b-12d3-a456-426614174000',
@@ -94,7 +94,7 @@ export class ServiceController {
       example: {
         statusCode: 400,
         message: [
-          'title should not be empty',
+          'name should not be empty',
           'price must be a number'
         ],
         error: 'Bad Request'
@@ -106,7 +106,7 @@ export class ServiceController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Lister tous les services',
     description: 'Récupère la liste de tous les services disponibles'
   })
@@ -134,23 +134,6 @@ export class ServiceController {
   })
   async findAll(@Query('category') category?: string) {
     return this.serviceService.findAll(category);
-  }
-
-  @Get('organization/:organizationId')
-  @ApiOperation({ 
-    summary: 'Lister les services par organisation',
-    description: 'Récupère tous les services associés à une organisation spécifique'
-  })
-  @ApiParam({
-    name: 'organizationId',
-    description: 'ID unique de l\'organisation',
-    example: '123e4567-e89b-12d3-a456-426614174000'
-  })
-  @ApiOkResponse({
-    description: 'Liste des services de l\'organisation récupérée avec succès'
-  })
-  getByOrganization(@Param('organizationId') organizationId: string) {
-    return this.serviceService.findAll(undefined, organizationId);
   }
 
   @Get(':id')
@@ -187,6 +170,16 @@ export class ServiceController {
   })
   update(@Param('id') id: string, @Body() updateServiceDto: UpdateServiceDto) {
     return this.serviceService.update(id, updateServiceDto);
+  }
+
+  @Post('fix-configs')
+  @ApiOperation({ summary: 'Corriger les configurations des services' })
+  @ApiResponse({
+    status: 200,
+    description: 'Configurations corrigées'
+  })
+  async fixServiceConfigs() {
+    return this.serviceService.fixServiceConfigs();
   }
 
   @Delete(':id')

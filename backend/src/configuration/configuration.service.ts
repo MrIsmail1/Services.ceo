@@ -35,9 +35,13 @@ export class ConfigurationService {
 
         const config = await this.prisma.serviceConfig.create({
             data: {
-                service: { connect: { id: serviceId } },
                 ...defaultConfig
             }
+        });
+
+        await this.prisma.service.update({
+            where: { id: serviceId },
+            data: { configId: config.id }
         });
 
         return this.mapToServiceConfiguration(config);
@@ -72,8 +76,8 @@ export class ConfigurationService {
         });
 
         if (!existing) {
-                throw new NotFoundException(`Configuration for service ${serviceId} not found`);
-            }
+            throw new NotFoundException(`Configuration for service ${serviceId} not found`);
+        }
 
         const updatePayload: Prisma.ServiceConfigUpdateInput = {
             inputSchema: updateData.inputSchema as Prisma.InputJsonValue,
@@ -118,7 +122,7 @@ export class ConfigurationService {
 
         if (!valid) {
             const errors = validate.errors
-                ?.map(e => `${(e as any).instancePath ?? e.dataPath} ${e.message}`)
+                ?.map(e => `${e.instancePath} ${e.message}`)
                 .join('; ');
             throw new Error(errors || 'Invalid input');
 

@@ -35,9 +35,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function AgentiaPage() {
+export default function ProtectedAgentiaPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -111,6 +111,11 @@ export default function AgentiaPage() {
       setIsTestingConnection(false);
     }
   };
+
+  if (isLoading) return <div>Chargement...</div>;
+  if (!user || user.role !== "PRO") {
+    return <div className="text-center py-8 text-red-600 font-bold">Accès réservé aux prestataires PRO.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

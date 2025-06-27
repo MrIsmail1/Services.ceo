@@ -7,18 +7,23 @@ import { Service } from "@/types/Service";
 import {
   CheckCircle,
   Edit,
+  MessageSquare,
   Pause,
   Play,
   Settings,
   Trash2,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 
 interface ServiceCardProps {
   service: Service;
   onStatusChange?: (serviceId: string, status: Service["status"]) => void;
   onEdit?: (serviceId: string) => void;
   onDelete?: (serviceId: string) => void;
+  href?: string;
+  readOnly?: boolean;
+  showChatButton?: boolean;
 }
 
 export function ServiceCard({
@@ -26,6 +31,9 @@ export function ServiceCard({
   onStatusChange,
   onEdit,
   onDelete,
+  href,
+  readOnly = false,
+  showChatButton = false,
 }: ServiceCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -60,8 +68,8 @@ export function ServiceCard({
     }
   };
 
-  return (
-    <Card className="hover:shadow-lg transition-shadow">
+  const cardContent = (
+    <Card className={`hover:shadow-lg transition-shadow ${href ? 'cursor-pointer hover:ring-2 hover:ring-blue-400' : ''}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -83,7 +91,6 @@ export function ServiceCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-gray-600">{service.description}</p>
-
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Agent:</span>
@@ -103,48 +110,65 @@ export function ServiceCard({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Visibilité:</span>
-            <span className="font-medium">
-              {service.isPublic ? "Public" : "Privé"}
-            </span>
+            <span className="font-medium">{service.isPublic ? "Public" : "Privé"}</span>
           </div>
         </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={handleStatusToggle}
-          >
-            {service.status === "active" ? (
-              <>
-                <Pause className="w-3 h-3 mr-1" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="w-3 h-3 mr-1" />
-                Activer
-              </>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEdit?.(service.id)}
-          >
-            <Edit className="w-3 h-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-red-600 hover:text-red-700"
-            onClick={() => onDelete?.(service.id)}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleStatusToggle}
+            >
+              {service.status === "active" ? (
+                <>
+                  <Pause className="w-3 h-3 mr-1" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3 mr-1" />
+                  Activer
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit?.(service.id)}
+            >
+              <Edit className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:text-red-700"
+              onClick={() => onDelete?.(service.id)}
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        {showChatButton && (
+          <div className="pt-2">
+            <Link href={`/services/${service.id || ''}/chat`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700"
+              >
+                <MessageSquare className="w-3 h-3 mr-1" />
+                Tester le service
+              </Button>
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
+
+  return href ? (
+    <a href={href} style={{ textDecoration: 'none' }}>{cardContent}</a>
+  ) : cardContent;
 }

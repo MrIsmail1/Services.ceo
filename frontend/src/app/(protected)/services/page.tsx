@@ -1,69 +1,24 @@
 "use client";
 
 import { CreateServiceModal } from "@/components/service/CreateServiceModal";
+import { EditServiceModal } from "@/components/service/EditServiceModal";
 import { ServiceCard } from "@/components/service/ServiceCard";
 import { StatsCard } from "@/components/service/StatsCard";
 import { Button } from "@/components/ui/button";
-import { createService, fetchServices, updateServiceStatus } from "@/lib/api";
+import { createService, fetchServices, updateServiceStatus, updateService } from "@/lib/api";
 import { CreateServiceData } from "@/schemas/serviceSchema";
-import { Service } from "@/types/Service";
+import { Service, CreateServicePayload } from "@/types/Service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Plus, Settings, Users } from "lucide-react";
-import { useState } from "react";
-const mockServices: Service[] = [
-  {
-    id: "1",
-    name: "Générateur de Résumés",
-    description: "Service de résumé automatique de documents",
-    category: "Traitement de texte",
-    status: "active",
-    agent: "Assistant Client",
-    model: "gpt-4",
-    lastUsed: "Il y a 30 minutes",
-    usageCount: 156,
-    isPublic: true,
-  },
-  {
-    id: "2",
-    name: "Analyseur de Sentiment",
-    description: "Analyse des sentiments dans les commentaires clients",
-    category: "Analyse",
-    status: "active",
-    agent: "Générateur de Contenu",
-    model: "gpt-3.5-turbo",
-    lastUsed: "Il y a 2 heures",
-    usageCount: 89,
-    isPublic: false,
-  },
-  {
-    id: "3",
-    name: "Correcteur Orthographique",
-    description: "Correction automatique de textes",
-    category: "Traitement de texte",
-    status: "testing",
-    agent: "Analyseur de Code",
-    model: "claude-3",
-    lastUsed: "Il y a 1 jour",
-    usageCount: 23,
-    isPublic: false,
-  },
-  {
-    id: "4",
-    name: "Traducteur Multilingue",
-    description: "Service de traduction automatique",
-    category: "Traduction",
-    status: "inactive",
-    agent: "Assistant Client",
-    model: "gpt-4",
-    lastUsed: "Il y a 3 jours",
-    usageCount: 67,
-    isPublic: true,
-  },
-];
+import { CheckCircle, Plus, Settings, Users, Wrench } from "lucide-react";
+import { useState, useEffect } from "react";
+import useAuth from "@/hooks/useAuth";
 
-export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>(mockServices);
+export default function ProtectedServicesPage() {
+  const { user, isLoading } = useAuth();
+  const [services, setServices] = useState<Service[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: ServicesFromDb } = useQuery<Service[]>({
@@ -71,31 +26,100 @@ export default function ServicesPage() {
     queryFn: fetchServices,
   });
 
+  useEffect(() => {
+    if (ServicesFromDb) {
+      const mapped = ServicesFromDb.map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description || "",
+        category: s.category || "",
+        status: s.status || "inactive",
+        agent: s.agent || "",
+        model: s.model || "",
+        lastUsed: s.lastUsed || "",
+        usageCount: s.usageCount || 0,
+        isPublic: s.isPublic || false,
+      }));
+      setServices(mapped);
+    }
+  }, [ServicesFromDb]);
+
   const { mutate: newService } = useMutation({
     mutationFn: createService,
-    onSuccess: (data) => {
+    onSuccess: () => {
       setIsCreateModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+    },
+  });
+
+  const { mutate: editService } = useMutation({
+    mutationFn: ({ serviceId, data }: { serviceId: string; data: CreateServiceData }) => 
+      updateService(serviceId, data),
+    onSuccess: () => {
+      setIsEditModalOpen(false);
+      setEditingServiceId(null);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
   const { mutateAsync: serviceStatusChange } = useMutation({
-    mutationFn: updateServiceStatus,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ["services"],
-      });
+    mutationFn: ({ serviceId, status }: { serviceId: string; status: Service["status"] }) => 
+      updateServiceStatus(serviceId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
+  const { mutate: fixConfigs } = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('http://localhost:4500/services/fix-configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('Configurations corrigées:', data);
+      alert(`Configurations corrigées ! ${data.servicesWithoutConfig} services sans config, ${data.servicesWithConfig} avec config.`);
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la correction des configurations:', error);
+      alert('Erreur lors de la correction des configurations');
+    },
+  });
+
+  if (isLoading) return <div>Chargement...</div>;
+  if (!user || user.role !== "PRO") {
+    return <div className="text-center py-8 text-red-600 font-bold">Accès réservé aux prestataires PRO.</div>;
+  }
+
   const activeServices = services.filter((s) => s.status === "active").length;
   const testingServices = services.filter((s) => s.status === "testing").length;
-  const inactiveServices = services.filter(
-    (s) => s.status === "inactive"
-  ).length;
+  const inactiveServices = services.filter((s) => s.status === "inactive").length;
   const publicServices = services.filter((s) => s.isPublic).length;
 
   const handleCreateService = (serviceData: CreateServiceData) => {
-    newService(serviceData);
+    const payload: CreateServicePayload = {
+      title: serviceData.name,
+      description: serviceData.description,
+      category: serviceData.category,
+      authorId: serviceData.authorId,
+      price: serviceData.price,
+      agent: serviceData.agent,
+      model: serviceData.model,
+      systemPrompt: serviceData.systemPrompt,
+      userPrompt: serviceData.userPrompt,
+      inputs: serviceData.inputs,
+      outputs: serviceData.outputs,
+      uiConfig: serviceData.uiConfig,
+      validationRules: serviceData.validationRules,
+    };
+    newService(payload);
+  };
+
+  const handleEditService = (serviceId: string, serviceData: CreateServiceData) => {
+    editService({ serviceId, data: serviceData });
   };
 
   const handleStatusChange = (serviceId: string, status: Service["status"]) => {
@@ -103,86 +127,81 @@ export default function ServicesPage() {
   };
 
   const handleEdit = (serviceId: string) => {
-    console.log("Edit service:", serviceId);
+    setEditingServiceId(serviceId);
+    setIsEditModalOpen(true);
   };
 
   const handleDelete = (serviceId: string) => {
     setServices(services.filter((service) => service.id !== serviceId));
   };
 
+  const handleFixConfigs = () => {
+    if (confirm('Voulez-vous corriger les configurations des services existants ?')) {
+      fixConfigs();
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Settings className="w-5 h-5 text-white" />
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Services</h1>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Services</h1>
+              <p className="text-gray-600">Gérez vos services IA et leurs configurations</p>
             </div>
-            <p className="text-gray-600">
-              Gérez vos services IA et leurs configurations
-            </p>
+            <div className="flex gap-2">
+              <Button onClick={handleFixConfigs} variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50">
+                <Wrench className="w-4 h-4 mr-2" />
+                Corriger Configs
+              </Button>
+              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Créer un service
+              </Button>
+            </div>
           </div>
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Créer un service
-          </Button>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="Total Services"
-            value={services.length}
-            icon={Settings}
-            color="text-gray-400"
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <StatsCard title="Total Services" value={services.length} icon={Settings} color="text-gray-400" />
+            <StatsCard title="Actifs" value={activeServices} icon={CheckCircle} color="text-green-500" />
+            <StatsCard title="En test" value={testingServices} icon={Settings} color="text-yellow-500" />
+            <StatsCard title="Publics" value={publicServices} icon={Users} color="text-blue-500" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.map((service) => (
+                <ServiceCard
+                    key={service.id}
+                    service={service}
+                    onStatusChange={handleStatusChange}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    showChatButton={true}
+                />
+            ))}
+          </div>
+
+          <CreateServiceModal
+              isOpen={isCreateModalOpen}
+              onClose={() => setIsCreateModalOpen(false)}
+              onSubmit={handleCreateService}
           />
-          <StatsCard
-            title="Actifs"
-            value={activeServices}
-            icon={CheckCircle}
-            color="text-green-500"
-          />
-          <StatsCard
-            title="En test"
-            value={testingServices}
-            icon={Settings}
-            color="text-yellow-500"
-          />
-          <StatsCard
-            title="Publics"
-            value={publicServices}
-            icon={Users}
-            color="text-blue-500"
+
+          <EditServiceModal
+              isOpen={isEditModalOpen}
+              onClose={() => {
+                setIsEditModalOpen(false);
+                setEditingServiceId(null);
+              }}
+              onSubmit={handleEditService}
+              serviceId={editingServiceId}
           />
         </div>
-
-        {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              onStatusChange={handleStatusChange}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-
-        {/* Create Service Modal */}
-        <CreateServiceModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={handleCreateService}
-        />
       </div>
-    </div>
   );
 }

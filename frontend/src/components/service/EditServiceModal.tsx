@@ -5,18 +5,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CreateServiceData, createServiceSchema } from "@/schemas/serviceSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { ServiceAgentForm } from "./ServiceAgentForm";
 import { ServiceBasicInfoForm } from "./ServiceBasicInfoForm";
 import { ServiceConfigForm } from "./ServiceConfigForm";
 import { ServiceTestForm } from "./ServiceTestForm";
 import useAuth from "@/hooks/useAuth";
+import { Service } from "@/types/Service";
+import { getServiceById } from "@/lib/api";
 
-interface CreateServiceModalProps {
+interface EditServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateServiceData) => void;
+  onSubmit: (serviceId: string, data: CreateServiceData) => void;
+  serviceId: string | null;
 }
 
 const steps = [
@@ -26,9 +29,10 @@ const steps = [
   { title: "Test et validation", component: ServiceTestForm },
 ];
 
-export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceModalProps) {
+export function EditServiceModal({ isOpen, onClose, onSubmit, serviceId }: EditServiceModalProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<CreateServiceData>({
     resolver: zodResolver(createServiceSchema),
@@ -38,6 +42,7 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
       category: "",
       authorId: user?.id || "",
       price: 0,
+      isPublic: false,
       agent: "",
       model: "",
       inputs: [{ name: "", type: "text", description: "", required: false }],
@@ -47,8 +52,39 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
     },
   });
 
-  const { handleSubmit, trigger } = form;
+  const { handleSubmit, trigger, reset } = form;
   const totalSteps = steps.length;
+
+  // Charger les données du service à modifier
+  useEffect(() => {
+    if (isOpen && serviceId) {
+      setIsLoading(true);
+      getServiceById(serviceId)
+        .then((service) => {
+          // Mapper les données du service vers le format du formulaire
+          reset({
+            name: service.name,
+            description: service.description,
+            category: service.category,
+            authorId: user?.id || "",
+            price: 0, // À adapter selon le modèle de données
+            isPublic: service.isPublic || false,
+            agent: service.agent || "",
+            model: service.model || "",
+            inputs: [{ name: "", type: "text", description: "", required: false }], // À adapter
+            outputs: [{ name: "", type: "text", description: "" }], // À adapter
+            prompt: "", // À adapter
+            testData: "",
+          });
+        })
+        .catch((error) => {
+          console.error("Erreur lors du chargement du service:", error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [isOpen, serviceId, reset, user?.id]);
 
   const handleNext = async () => {
     const isStepValid = await trigger(getFieldsForStep(currentStep));
@@ -60,20 +96,22 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
   };
 
   const handleFormSubmit = (data: CreateServiceData) => {
-    onSubmit({ ...data, authorId: user?.id || "" });
+    if (serviceId) {
+      onSubmit(serviceId, { ...data, authorId: user?.id || "" });
+    }
     handleClose();
   };
 
   const handleClose = () => {
     setCurrentStep(0);
-    form.reset();
+    reset();
     onClose();
   };
 
   const getFieldsForStep = (step: number): (keyof CreateServiceData)[] => {
     switch (step) {
       case 0:
-        return ["name", "description", "category", "authorId", "price"];
+        return ["name", "description", "category", "authorId", "price", "isPublic"];
       case 1:
         return ["agent", "model"];
       case 2:
@@ -87,11 +125,29 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
 
   const CurrentStepComponent = steps[currentStep].component;
 
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le service</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p>Chargement des données du service...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Créer un nouveau service</DialogTitle>
+            <DialogTitle>Modifier le service</DialogTitle>
           </DialogHeader>
 
           <div className="flex items-center justify-between mb-6">
@@ -126,7 +182,7 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
                 {currentStep === totalSteps - 1 ? (
                     <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                       <Check className="w-4 h-4 mr-2" />
-                      Créer le service
+                      Mettre à jour le service
                     </Button>
                 ) : (
                     <Button type="button" onClick={handleNext}>
@@ -140,4 +196,4 @@ export function CreateServiceModal({ isOpen, onClose, onSubmit }: CreateServiceM
         </DialogContent>
       </Dialog>
   );
-}
+} 

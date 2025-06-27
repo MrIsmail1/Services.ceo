@@ -8,8 +8,7 @@ import { AiService, AiResponse } from '../ai/ai.service';
 import { Prisma } from '@prisma/client';
 import { ConfigurationService } from '../configuration/configuration.service';
 import { LoggingService } from '../logging/logging.service';
-
-
+import { WorkflowService } from './workflow.service';
 
 @Injectable()
 export class ExecutionService {
@@ -18,13 +17,13 @@ export class ExecutionService {
       private readonly ai: AiService,
       private readonly configurationService: ConfigurationService,
       private readonly logger: LoggingService,
+      private readonly workflowService: WorkflowService,
   ) {}
-
 
   async run(
       serviceId: string,
       input: any,
-  ): Promise<{ success: boolean; data: any }> {
+  ): Promise<{ success: boolean; data: any; workflow?: any }> {
     // 1) Charger le service + sa config
     const svc = await this.prisma.service.findUnique({
       where: { id: serviceId },
@@ -51,52 +50,100 @@ export class ExecutionService {
     await this.logger.log(exec.id, 'INFO', 'Execution started');
 
     const aiReq = await this.configurationService.buildAiRequest(serviceId, input);
-    const systemPrompt = aiReq.system;
-    const userPrompt = `${aiReq.user}\n\n${JSON.stringify(aiReq.input, null, 2)}`;
-    const schema = svc.config.outputSchema as object;
+    
+    // Utiliser les prompts de la configuration du service
+    const systemPrompt = aiReq.system || svc.config.systemPrompt || `Tu es un assistant IA spécialisé dans le traitement de texte.
 
-    const aiResp: AiResponse<any> = await this.ai.generate(
+RÈGLES IMPORTANTES :
+1. Tu dois toujours être utile et fournir des réponses précises
+2. Si tu estimes ne pas avoir assez de contexte pour répondre, tu DOIS poser des questions pour clarifier
+3. Sois interactif et guide l'utilisateur vers une réponse complète
+4. Explique clairement ce que tu peux faire et ce dont tu as besoin
+5. Ne donne jamais de réponses vagues ou génériques`;
+
+    const userPrompt = aiReq.user || svc.config.userPrompt || `Traite les données suivantes et fournis un résultat utile.
+
+Si les informations fournies ne sont pas suffisantes pour répondre de manière précise, pose des questions pour clarifier :
+- Quel est le contexte spécifique ?
+- Quel type de résultat est attendu ?
+- Y a-t-il des contraintes ou préférences particulières ?
+
+Données à traiter : {input}`;
+
+    try {
+      // Exécuter le workflow
+      const workflowResponse = await this.workflowService.executeWorkflow(
+        serviceId,
+        svc.name,
+        input,
         systemPrompt,
-        userPrompt,
-        schema,
-        { stream: false },
-    );
+        userPrompt
+      );
 
-    let updateData: Prisma.ExecutionUpdateInput;
-    let output: { success: boolean; data: any } | undefined;
-    if (aiResp.error == null) {
-      output = { success: true, data: aiResp.result! };
+      let updateData: Prisma.ExecutionUpdateInput;
+      let output: { success: boolean; data: any; workflow?: any } | undefined;
 
-      updateData = {
-        status: 'COMPLETED',
-        output,
-        completedAt: new Date(),
-      };
-    } else {
-      updateData = {
-        status: 'FAILED',
-        error: aiResp.error,
-        completedAt: new Date(),
-      };
-    }
+      if (workflowResponse.success) {
+        output = { 
+          success: true, 
+          data: workflowResponse.data,
+          workflow: workflowResponse.workflow
+        };
 
-    await this.prisma.execution.update({
-      where: { id: exec.id },
-      data: updateData,
-    });
+        // Sérialiser les données pour Prisma
+        const serializedOutput = {
+          success: true,
+          data: workflowResponse.data,
+          workflow: JSON.stringify(workflowResponse.workflow) // Sérialiser le workflow
+        };
 
-    await this.logger.log(
-        exec.id,
-        aiResp.error ? 'ERROR' : 'INFO',
-        aiResp.error ? String(aiResp.error) : 'Execution completed',
-    );
+        updateData = {
+          status: 'COMPLETED',
+          output: serializedOutput,
+          completedAt: new Date(),
+        };
+      } else {
+        updateData = {
+          status: 'FAILED',
+          error: workflowResponse.error,
+          completedAt: new Date(),
+        };
+      }
 
-    if (aiResp.error) {
+      await this.prisma.execution.update({
+        where: { id: exec.id },
+        data: updateData,
+      });
+
+      await this.logger.log(
+          exec.id,
+          workflowResponse.success ? 'INFO' : 'ERROR',
+          workflowResponse.success ? 'Execution completed with workflow' : String(workflowResponse.error),
+      );
+
+      if (!workflowResponse.success) {
+        throw new InternalServerErrorException(
+            `Workflow error: ${workflowResponse.error}`,
+        );
+      }
+
+      return output!;
+
+    } catch (error) {
+      await this.prisma.execution.update({
+        where: { id: exec.id },
+        data: {
+          status: 'FAILED',
+          error: error.message,
+          completedAt: new Date(),
+        },
+      });
+
+      await this.logger.log(exec.id, 'ERROR', String(error));
+
       throw new InternalServerErrorException(
-          `AI error: ${aiResp.error}`,
+          `Execution error: ${error.message}`,
       );
     }
-
-    return output!;
   }
 }

@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums from feature/DEV-4-services-front
 enum ObjectStatus {
   ONLINE
   OFFLINE
@@ -71,7 +70,6 @@ enum ConstraintSeverity {
   HARD_BLOCK
 }
 
-// User of the system
 model User {
   id            String           @id @default(uuid())
   email         String           @unique
@@ -79,67 +77,38 @@ model User {
   firstName     String?
   lastName      String?
   role          String           @default("CLIENT")
-  services      Service[] // services this user created
+  services      Service[]
   executions    Execution[]
-  versions      ServiceVersion[] // versions published by this user
-  organizations Organization[]   @relation("UserOrganizations")
+  versions      ServiceVersion[]
   agents        Agent[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 }
 
-// Organisations that users can create/join
-model Organization {
-  organizationId     String                 @id @default(cuid())
-  authorId           String
-  author             User                   @relation("UserOrganizations", fields: [authorId], references: [id])
-  ownerId            String?
-  legalName          String?                @db.VarChar(64)
-  brand              String?                @db.VarChar(32)
-  currency           ServicesAcceptedDevise @default(EUR)
-  vatNumber          String?                @db.VarChar(32)
-  locationId         String?
-  description        String?                @db.Text
-  summary            String?                @db.Text
-  advancedAttributes Json?
-  services           Service[]              @relation("OrganizationServices")
-  createdAt          DateTime               @default(now())
-}
-
-// Main service table
 model Service {
-  id          String   @id @default(uuid())
-  name        String
-  slug        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // relation vers la config
-  config   ServiceConfig @relation(fields: [configId], references: [id])
-  configId String        @unique
-
-  executions Execution[]
-  versions   ServiceVersion[]
-
-  // qui a créé le service
-  createdBy   User   @relation(fields: [createdById], references: [id])
-  createdById String
-
-  // (optionnel) organisation liée
-  organizationId String?
-  organization   Organization? @relation("OrganizationServices", fields: [organizationId], references: [organizationId])
+  id             String           @id @default(uuid())
+  name           String
+  slug           String           @unique
+  description    String?
+  isActive       Boolean          @default(true)
+  category       String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  config         ServiceConfig?   @relation(fields: [configId], references: [id])
+  configId       String?          @unique
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  createdById    String
+  executions     Execution[]
+  versions       ServiceVersion[]
 
   @@index([slug])
   @@index([category])
   @@index([createdById])
 }
 
-// Service configuration
 model ServiceConfig {
   id              String   @id @default(uuid())
+  service         Service?
   inputSchema     Json
   outputSchema    Json
   constraints     Json
@@ -152,12 +121,23 @@ model ServiceConfig {
   metadata        Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  // back-relation automatique vers Service.config
-  service Service?
 }
 
-// Published versions of a service
+model Agent {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  type        String
+  model       String
+  apiKey      String?
+  apiUrl      String
+  status      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model ServiceVersion {
   id            String   @id @default(uuid())
   service       Service  @relation(fields: [serviceId], references: [id])
@@ -172,7 +152,6 @@ model ServiceVersion {
   @@unique([serviceId, version])
 }
 
-// Executions (runs) of services
 model Execution {
   id          String    @id @default(uuid())
   service     Service   @relation(fields: [serviceId], references: [id])
@@ -195,7 +174,6 @@ model Execution {
   @@index([status])
 }
 
-// Logs émis durant une exécution
 model Log {
   id          String    @id @default(uuid())
   execution   Execution @relation(fields: [executionId], references: [id])
@@ -207,20 +185,4 @@ model Log {
 
   @@index([executionId])
   @@index([timestamp])
-}
-
-// Agents que les users peuvent configurer
-model Agent {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  type        String
-  model       String
-  apiKey      String?
-  apiUrl      String
-  status      String
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }

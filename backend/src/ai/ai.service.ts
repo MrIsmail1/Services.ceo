@@ -81,11 +81,23 @@ export class AiService {
       }
     } catch (err: any) {
       this.logger.error('Erreur AI.generate()', err.message || err);
-      const msg =
-        err.code === 'ECONNABORTED'
-          ? 'Request timeout'
-          : err.response?.data || err.message;
-      return { result: null, error: String(msg) };
+      let msg = 'Erreur inconnue';
+      
+      if (err.code === 'ECONNABORTED') {
+        msg = 'Request timeout';
+      } else if (err.response?.data) {
+        msg = typeof err.response.data === 'string' 
+          ? err.response.data 
+          : JSON.stringify(err.response.data);
+      } else if (err.message) {
+        msg = err.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else {
+        msg = JSON.stringify(err);
+      }
+      
+      return { result: null, error: msg };
     }
   }
 }
