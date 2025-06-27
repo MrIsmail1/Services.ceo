@@ -55,7 +55,7 @@ export function ModernChatInterface({
   const [currentWorkflow, setCurrentWorkflow] = useState<any>(null);
   const [suggestedInputs, setSuggestedInputs] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [provider, setProvider] = useState<'lama' | 'mistral'>('lama');
+  const [provider, setProvider] = useState<'lama' | 'mistral' | 'openai'>('lama');
 
   // Auto-scroll vers le bas
   const scrollToBottom = () => {
@@ -187,11 +187,12 @@ export function ModernChatInterface({
         <span className="text-sm text-gray-700">Fournisseur IA :</span>
         <select
           value={provider}
-          onChange={e => setProvider(e.target.value as 'lama' | 'mistral')}
+          onChange={e => setProvider(e.target.value as 'lama' | 'mistral' | 'openai')}
           className="border rounded px-2 py-1 text-sm"
         >
           <option value="lama">Lama Studio</option>
           <option value="mistral">Mistral AI</option>
+          <option value="openai">OpenAI GPT-4o</option>
         </select>
       </div>
 

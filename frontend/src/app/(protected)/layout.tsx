@@ -9,14 +9,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
         <div className="flex">
           <Sidebar />
           <main className="flex-1">{children}</main>
+          <Toaster />
         </div>
-        <Toaster />
-      </body>
-    </html>
   );
 }

@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { catchError, firstValueFrom, map, timeout } from 'rxjs';
+import OpenAI from "openai";
 
 export interface AiResponse<T = any> {
   result: T | null;
@@ -13,12 +14,17 @@ export class AiService {
   private readonly baseUrl: string;
   private readonly modelName: string;
   private readonly requestTimeout: number;
+  private readonly openai: OpenAI;
 
   constructor(private readonly http: HttpService) {
     this.baseUrl = 'http://host.docker.internal:1234';
     this.modelName =
       process.env.LAMA_API_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
     this.requestTimeout = 150000;
+    const openaiApiKey = process.env.OPENAI_API_KEY || "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";
+    this.openai = new OpenAI({
+      apiKey: openaiApiKey,
+    });
   }
 
   
@@ -31,9 +37,36 @@ export class AiService {
       temperature?: number;
       max_tokens?: number;
       stream?: boolean;
-      provider?: 'lama' | 'mistral';
+      provider?: 'lama' | 'mistral' | 'openai';
     } = {},
   ): Promise<AiResponse<T>> {
+    if (options.provider === 'openai') {
+      try {
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.max_tokens ?? 1024,
+        });
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+          return { result: null, error: 'Empty response from OpenAI' };
+        }
+        // Nettoyage des balises Markdown éventuelles (```json, ```) et échappements
+        let cleanContent = content.replace(/```json|```/gi, '').trim();
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(cleanContent);
+        } catch (e) {}
+        return { result: parsed ?? cleanContent };
+      } catch (err: any) {
+        this.logger.error('Erreur OpenAI.generate()', err.message || err);
+        return { result: null, error: err.message || 'Erreur OpenAI' };
+      }
+    }
     if (options.provider === 'mistral') {
       const url = 'https://api.mistral.ai/v1/chat/completions';
       const payload: any = {
