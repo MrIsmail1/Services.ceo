@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { catchError, firstValueFrom, map, timeout } from 'rxjs';
+import OpenAI from "openai";
 
 export interface AiResponse<T = any> {
   result: T | null;
@@ -31,9 +32,40 @@ export class AiService {
       temperature?: number;
       max_tokens?: number;
       stream?: boolean;
-      provider?: 'lama' | 'mistral';
+      provider?: 'lama' | 'mistral' | 'openai';
     } = {},
   ): Promise<AiResponse<T>> {
+    if (options.provider === 'openai') {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return { result: null, error: 'OPENAI_API_KEY manquante dans les variables d\'environnement' };
+      }
+      const openai = new OpenAI({ apiKey });
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.max_tokens ?? 1024,
+        });
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+          return { result: null, error: 'Empty response from OpenAI' };
+        }
+        let cleanContent = content.replace(/```json|```/gi, '').trim();
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(cleanContent);
+        } catch (e) {}
+        return { result: parsed ?? cleanContent };
+      } catch (err: any) {
+        this.logger.error('Erreur OpenAI.generate()', err.message || err);
+        return { result: null, error: err.message || 'Erreur OpenAI' };
+      }
+    }
     if (options.provider === 'mistral') {
       const url = 'https://api.mistral.ai/v1/chat/completions';
       const payload: any = {
