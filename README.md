@@ -46,5 +46,5 @@ Dans de nombreux domaines, les utilisateurs souhaitent accéder à des services 
 - Support multilingue, accessibilité, personnalisation avancée
 - Création de services IA "no-code" pour les prestataires
 
----Add commentMore actions
+---
 **En résumé** : Services.ceo permet à tout prestataire de créer des services IA spécialisés, interactifs et évolutifs, tout en garantissant une expérience utilisateur fluide et la possibilité de passer à l'humain si besoin.
